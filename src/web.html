@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orb</title>
+<style>
+  :root {
+    --bg: #fafaf9; --fg: #1c1917; --muted: #78716c; --line: #e7e5e4;
+    --me: #1c1917; --me-fg: #fafaf9; --card: #ffffff; --accent: #2563eb; --warn: #b45309;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1917; --fg: #f5f5f4; --muted: #a8a29e; --line: #292524;
+      --me: #f5f5f4; --me-fg: #1c1917; --card: #24201e; --accent: #60a5fa; --warn: #fbbf24;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 12px 16px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .meta { color: var(--muted); font-size: 13px; }
+  #log { flex: 1; overflow-y: auto; padding: 16px; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .msg { margin: 10px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .user { display: flex; justify-content: flex-end; }
+  .user > div {
+    background: var(--me); color: var(--me-fg);
+    padding: 8px 12px; border-radius: 14px 14px 4px 14px; max-width: 85%;
+  }
+  .agent > div { padding: 2px 0; }
+  .agent code { font: 13px var(--mono); background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
+  .agent pre.code {
+    font: 13px/1.5 var(--mono); background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 12px; margin: 6px 0; overflow-x: auto; white-space: pre;
+  }
+  .thinking { color: var(--muted); font-size: 13px; font-style: italic; }
+  .tool { font: 12.5px/1.5 var(--mono); color: var(--muted); margin: 4px 0; }
+  .tool .call { color: var(--accent); }
+  .tool details { margin: 2px 0 0 14px; }
+  .tool summary { cursor: pointer; }
+  .tool pre {
+    margin: 4px 0; padding: 8px 10px; background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; overflow-x: auto; white-space: pre-wrap; max-height: 320px; overflow-y: auto;
+  }
+  .tool .err { color: var(--warn); }
+  .note { color: var(--muted); font-size: 13px; border-left: 2px solid var(--line); padding-left: 10px; }
+  .notice { color: var(--warn); font-size: 13px; text-align: center; margin: 8px 0; }
+  .older { display: block; margin: 0 auto 8px; }
+  form {
+    border-top: 1px solid var(--line); padding: 12px 16px;
+    display: flex; gap: 8px; max-width: 792px; width: 100%; margin: 0 auto; align-items: flex-end;
+  }
+  textarea {
+    flex: 1; resize: none; font: inherit; color: inherit; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; max-height: 200px;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--muted); }
+  button {
+    font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--card); color: var(--fg);
+    border-radius: 10px; padding: 8px 14px; cursor: pointer;
+  }
+  button.primary { background: var(--me); color: var(--me-fg); border-color: var(--me); }
+  button[hidden] { display: none; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+  .dot.busy { background: var(--accent); animation: pulse 1s infinite alternate; }
+  @keyframes pulse { to { opacity: .3; } }
+  #gate { margin: 20vh auto; max-width: 420px; padding: 0 16px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="name">Orb</h1>
+  <span class="meta"><span id="dot" class="dot"></span><span id="status">connecting…</span></span>
+</header>
+<main id="log"><div class="wrap" id="items"></div></main>
+<form id="form">
+  <textarea id="input" rows="1" placeholder="Message" autofocus></textarea>
+  <button type="button" id="stop" hidden>Stop</button>
+  <button type="submit" class="primary">Send</button>
+</form>
+<script>
+(() => {
+  const token = location.hash.slice(1);
+  const $ = (id) => document.getElementById(id);
+  const log = $("log"), items = $("items"), input = $("input");
+  let agent = "orb", busy = false, oldest = null, live = null;
+
+  if (!token) {
+    document.body.innerHTML = '<p id="gate">Open the link that <code>orb web</code> printed in your terminal. It ends with a #token.</p>';
+    return;
+  }
+
+  const api = (path, body) => fetch(path, {
+    method: body === undefined ? "GET" : "POST",
+    headers: { "x-orb-token": token, "content-type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  }).then((r) => r.json());
+
+  const el = (tag, cls, text) => {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
+  const nearBottom = () => log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  const scroll = (force) => { if (force) log.scrollTop = log.scrollHeight; };
+
+  // A little Markdown, safely: everything is escaped first, and only these
+  // tags are added back. No links, no raw HTML.
+  const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  function inline(t) {
+    return t.split(/(`[^`\n]+`)/).map((part, k) => k % 2
+      ? "<code>" + esc(part.slice(1, -1)) + "</code>"
+      : esc(part)
+          .replace(/^#{1,6} +(.*)$/gm, "<strong>$1</strong>")
+          .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, "$1<em>$2</em>")
+    ).join("");
+  }
+  function markdown(t) {
+    // Odd parts are fenced code; an unclosed fence (still streaming) runs to the end.
+    const parts = t.split(/```[^\n]*\n?([\s\S]*?)(?:```|$)/);
+    return parts.map((part, k) => {
+      if (k % 2) return '<pre class="code">' + esc(part.replace(/\n$/, "")) + "</pre>";
+      if (k > 0) part = part.replace(/^\n/, "");
+      if (k < parts.length - 1) part = part.replace(/\n$/, "");
+      return inline(part);
+    }).join("");
+  }
+  function setText(body, kind, text) {
+    body.dataset.raw = text;
+    if (kind === "agent") body.innerHTML = markdown(text);
+    else body.textContent = text;
+  }
+
+  function bubble(kind, text) {
+    const row = el("div", "msg " + (kind === "user" ? "user" : kind === "note" ? "note" : "agent"));
+    const body = el("div");
+    setText(body, kind === "user" || kind === "note" ? kind : "agent", text);
+    row.append(body);
+    return [row, body];
+  }
+
+  function toolCall(name, input) {
+    const box = el("div", "tool");
+    let summary = input;
+    try {
+      const o = JSON.parse(input);
+      summary = o.command ?? o.path ?? (o.id !== undefined ? o.id + (o.n !== undefined ? "+" + o.n : "") : input);
+    } catch {}
+    summary = String(summary).replace(/\s+/g, " ");
+    if (summary.length > 120) summary = summary.slice(0, 119) + "…";
+    box.append(el("div", "call", "● " + name + "(" + summary + ")"));
+    return box;
+  }
+
+  function toolResult(box, result, isError) {
+    const d = el("details");
+    const lines = result.split("\n").length;
+    d.append(el("summary", isError ? "err" : "", (isError ? "error" : "output") + " · " + lines + " line" + (lines === 1 ? "" : "s")));
+    d.append(el("pre", "", result));
+    (box ?? items).append(d);
+  }
+
+  // A logged message, from history.
+  let lastTool = null;
+  function renderLogged(m, into, before) {
+    const add = (node) => before ? into.insertBefore(node, before) : into.append(node);
+    if (m.kind === "tool") {
+      const sp = m.text.indexOf(" ");
+      lastTool = toolCall(m.text.slice(0, sp < 0 ? undefined : sp), sp < 0 ? "" : m.text.slice(sp + 1));
+      add(lastTool);
+    } else if (m.kind === "echo") {
+      const isError = m.text.startsWith("error:");
+      if (lastTool && lastTool.isConnected) toolResult(lastTool, m.text, isError);
+      else { const box = el("div", "tool"); toolResult(box, m.text, isError); add(box); }
+      lastTool = null;
+    } else {
+      lastTool = null;
+      add(bubble(m.kind === agent ? "agent" : m.kind, m.text)[0]);
+    }
+  }
+
+  async function loadOlder() {
+    const res = await api("/api/history?limit=200" + (oldest === null ? "" : "&before=" + oldest));
+    const msgs = res.messages;
+    if (!msgs.length) return;
+    const first = items.firstChild;
+    const height = log.scrollHeight;
+    const frag = document.createDocumentFragment();
+    lastTool = null;
+    for (const m of msgs) renderLogged(m, frag);
+    items.querySelector(".older")?.remove();
+    items.insertBefore(frag, items.firstChild);
+    oldest = msgs[0].i;
+    if (oldest > 0) {
+      const more = el("button", "older", "Load earlier messages");
+      more.type = "button";
+      more.onclick = loadOlder;
+      items.prepend(more);
+    }
+    if (first) log.scrollTop = log.scrollHeight - height;
+    else scroll(true);
+  }
+
+  function setBusy(b) {
+    busy = b;
+    $("dot").className = "dot" + (b ? " busy" : "");
+    $("stop").hidden = !b;
+  }
+  async function refreshStatus() {
+    const s = await api("/api/state");
+    $("status").textContent = s.messages + " messages · view " + Math.round(s.viewBytes / 1024) + " KB";
+    setBusy(s.busy);
+  }
+
+  // The live turn: thinking, text and tools as they stream.
+  function liveAppend(kind, delta) {
+    const stick = nearBottom();
+    if (!live || live.kind !== kind) {
+      const [row, body] = kind === "thinking" ? (() => { const r = el("div", "msg thinking"); return [r, r]; })() : bubble("agent", "");
+      items.append(row);
+      live = { kind, body };
+    }
+    if (kind === "text") setText(live.body, "agent", (live.body.dataset.raw || "") + delta);
+    else live.body.textContent += delta;
+    scroll(stick);
+  }
+
+  function onEvent(e) {
+    const stick = nearBottom();
+    switch (e.type) {
+      case "hello":
+        agent = e.agent;
+        $("name").textContent = e.name;
+        document.title = e.name;
+        setBusy(e.busy);
+        break;
+      case "user":
+        items.append(bubble("user", e.text)[0]);
+        live = null;
+        scroll(true);
+        break;
+      case "start": setBusy(true); live = null; break;
+      case "thinking": liveAppend("thinking", e.d); break;
+      case "text": liveAppend("text", e.d); break;
+      case "tool":
+        live = { kind: "tool", box: toolCall(e.name, e.input) };
+        items.append(live.box);
+        scroll(stick);
+        break;
+      case "result":
+        toolResult(live && live.box, e.result, e.isError);
+        live = null;
+        scroll(stick);
+        break;
+      case "notice":
+        items.append(el("div", "notice", e.message));
+        live = null;
+        scroll(stick);
+        break;
+      case "end":
+        live = null;
+        refreshStatus();
+        break;
+    }
+  }
+
+  function connect() {
+    const es = new EventSource("/api/events?t=" + encodeURIComponent(token));
+    es.onmessage = (m) => onEvent(JSON.parse(m.data));
+    es.onerror = () => { $("status").textContent = "reconnecting…"; };
+    es.onopen = () => refreshStatus();
+  }
+
+  function send() {
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    autosize();
+    api("/api/send", { text });
+  }
+
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 200) + "px";
+  }
+
+  $("form").onsubmit = (e) => { e.preventDefault(); send(); };
+  $("stop").onclick = () => api("/api/stop", {});
+  input.addEventListener("input", autosize);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+
+  loadOlder().then(connect).catch(() => {
+    $("status").textContent = "can't reach orb: is `orb web` running, and is the link right?";
+  });
+})();
+</script>
+</body>
+</html>

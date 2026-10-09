@@ -1,6 +1,7 @@
 // orb: one chat that never ends, in the terminal.
 //
 //   orb                  chat (the chat lives in $ORB_DIR, or ~/.orb)
+//   orb web [port]       chat in the browser (default port 4747)
 //   orb note [file]      import memories from before the chat, one per paragraph
 //   orb stats            sizes of the log, the tree and the views
 //   orb view             print the view, as the model sees it
@@ -13,6 +14,7 @@ import { Chat } from "./chat.ts";
 import { fromEnv } from "./config.ts";
 import { AnthropicClient } from "./model.ts";
 import { type Output, Turns } from "./turn.ts";
+import { serve } from "./web.ts";
 
 const tty = process.stdout.isTTY;
 const paint = (code: string) => (s: string) => (tty ? `\x1b[${code}m${s}\x1b[0m` : s);
@@ -22,7 +24,8 @@ const yellow = paint("33");
 
 const HELP = `orb: one chat that never ends
 
-  orb                  chat
+  orb                  chat in the terminal
+  orb web [port]       chat in the browser, at http://127.0.0.1:4747
   orb note [file]      import notes (memories from before the chat), one per
                        paragraph, from file or stdin
   orb stats            sizes of the log, the tree and the views
@@ -73,6 +76,7 @@ class TerminalOutput implements Output {
     if (this.mode !== mode && mode === "thinking") process.stdout.write(dim("∴ "));
     this.mode = mode;
   }
+  start(): void {}
   thinking(d: string): void {
     this.switchTo("thinking");
     process.stdout.write(dim(d));
@@ -168,6 +172,22 @@ async function repl(): Promise<void> {
   process.exit(0);
 }
 
+async function web(portArg: string | undefined): Promise<void> {
+  const port = portArg === undefined ? Number(process.env.ORB_PORT ?? 4747) : Number(portArg);
+  if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`bad port: ${portArg}`);
+  const chat = open();
+  const server = await serve({ chat, port });
+  console.log(`orb is running. Open this link (it holds your access token):\n\n  ${server.url}\n`);
+  console.log(dim("Ctrl-C to stop."));
+  const stop = async () => {
+    await server.close();
+    chat.close();
+    process.exit(0);
+  };
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+}
+
 async function note(file: string | undefined): Promise<void> {
   const text = file ? fs.readFileSync(file, "utf8") : fs.readFileSync(0, "utf8");
   const notes = text
@@ -189,6 +209,8 @@ async function main(): Promise<void> {
   switch (cmd) {
     case undefined:
       return repl();
+    case "web":
+      return web(arg);
     case "note":
       return note(arg);
     case "stats": {

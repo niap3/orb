@@ -188,6 +188,7 @@ test("a failed compaction is tried again at the next message", async () => {
 
 class Silent implements Output {
   events: string[] = [];
+  start() {}
   thinking() {}
   text() {}
   toolCall(name: string) {

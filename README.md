@@ -30,12 +30,32 @@ node src/cli.ts            # or: npm link, then: orb
 ```
 
 ```
-orb                  chat
+orb                  chat in the terminal
+orb web [port]       chat in the browser (default port 4747)
 orb note [file]      import notes (memories from before the chat), one per
                      paragraph, from a file or stdin
 orb stats            sizes of the log, the tree and the views
 orb view             print the view as the model sees it
 ```
+
+### In the browser
+
+```sh
+orb web
+```
+
+This prints a link like `http://127.0.0.1:4747/#3f9c…`. Open it. The part
+after `#` is a random access token, made fresh each time you start
+`orb web`, so use the newly printed link after a restart. The page shows
+the chat history and streams replies as they come, including thinking and
+tool calls; click "output" under a tool call to see its result. Press Enter
+to send, Shift+Enter for a new line, and Stop to interrupt a reply.
+
+The server listens on your own machine only (127.0.0.1). Every request needs
+the token, and requests with another host name are refused, so other
+websites you visit can't drive Orb. Don't share the link.
+
+### In the terminal
 
 In the chat, type `/stats`, `/view`, `/zoom id n` or `/quit`. Ctrl-C stops a
 running turn. A message you send while a turn is running reaches it between
@@ -70,6 +90,8 @@ src/model.ts     API calls, the cache-write gate, view cache blocks
 src/tools.ts     zoom, date, shell, read, write, edit
 src/turn.ts      the turn loop
 src/cli.ts       the terminal interface
+src/web.ts       orb web: the local server
+src/web.html     orb web: the page
 ```
 
 On disk:

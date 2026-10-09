@@ -12,6 +12,8 @@ import { clip } from "./text.ts";
 import { ToolError, runTool } from "./tools.ts";
 
 export interface Output {
+  /** A turn starts. */
+  start(): void;
   thinking(delta: string): void;
   text(delta: string): void;
   toolCall(name: string, input: unknown): void;
@@ -78,6 +80,7 @@ export class Turns {
   private async turn(m: string): Promise<void> {
     const { chat, out } = this;
     const abort = (this.abort = new AbortController());
+    out.start();
     const agent = chat.cfg.name.toLowerCase();
     try {
       // Wait until every message before m is summarized (the compactor
