@@ -6,6 +6,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { BetaTool } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { ToolError } from "./errors.ts";
+import { checkUi, uiToolDescription } from "./ui.ts";
+
+export { ToolError };
 
 export const tools: BetaTool[] = [
   {
@@ -83,6 +87,22 @@ export const tools: BetaTool[] = [
     },
     eager_input_streaming: true,
   },
+  {
+    name: "ui",
+    description: uiToolDescription,
+    input_schema: {
+      type: "object",
+      properties: {
+        blocks: {
+          type: "array",
+          description: "The blocks to show, in order.",
+          items: { type: "object", properties: { type: { type: "string" } }, required: ["type"] },
+        },
+      },
+      required: ["blocks"],
+    },
+    eager_input_streaming: true,
+  },
 ];
 
 export interface Memory {
@@ -90,7 +110,6 @@ export interface Memory {
   date(id: number): string;
 }
 
-export class ToolError extends Error {}
 
 type Input = Record<string, unknown>;
 
@@ -189,6 +208,9 @@ export async function runTool(name: string, input: Input, memory: Memory, cwd: s
       fs.writeFileSync(file, all ? text.split(old).join(neu) : text.replace(old, () => neu));
       return `replaced ${all ? matches : 1} match${matches > 1 && all ? "es" : ""} in ${file}`;
     }
+    case "ui":
+      checkUi(input);
+      return "shown. If it asks the user something, their answer comes as their next message.";
     default:
       throw new ToolError(`no tool named ${name}`);
   }

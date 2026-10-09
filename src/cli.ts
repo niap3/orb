@@ -14,6 +14,7 @@ import { Chat } from "./chat.ts";
 import { fromEnv } from "./config.ts";
 import { AnthropicClient } from "./model.ts";
 import { type Output, Turns } from "./turn.ts";
+import { type Block, uiText } from "./ui.ts";
 import { serve } from "./web.ts";
 
 const tty = process.stdout.isTTY;
@@ -87,9 +88,19 @@ class TerminalOutput implements Output {
   }
   toolCall(name: string, input: unknown): void {
     this.switchTo("none");
+    if (name === "ui") {
+      const blocks = (input as { blocks?: Block[] }).blocks;
+      try {
+        process.stdout.write(uiText(blocks ?? []) + "\n");
+        return;
+      } catch {
+        // A malformed call: the tool reports it; show it as a call.
+      }
+    }
     process.stdout.write(cyan(`● ${name}(${summarize(input)})`) + "\n");
   }
-  toolResult(_name: string, result: string, isError: boolean): void {
+  toolResult(name: string, result: string, isError: boolean): void {
+    if (name === "ui" && !isError) return;
     const lines = result.split("\n");
     const shown = lines.slice(0, 4).map((l) => (l.length > 160 ? l.slice(0, 159) + "…" : l));
     if (lines.length > 4) shown.push(`… ${lines.length - 4} more lines`);

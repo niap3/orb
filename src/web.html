@@ -11,88 +11,124 @@
   :root {
     color-scheme: dark;
     --bg: #2b2d30; --fg: #d4d2cc; --muted: #a09e97; --line: #45484d;
-    --card: #33363a; --me: #41454b; --me-fg: #e2e0da; --accent: #8fb0d3; --warn: #d8b36e;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --card: #33363a; --hi: #41454b; --bright: #e2e0da; --accent: #8fb0d3; --warn: #d8b36e;
+    --c1: #8fb0d3; --c2: #d8b36e; --c3: #9cc59a; --c4: #d39a9a; --c5: #b9a3d6;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Cascadia Mono", Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     background: var(--bg); color: var(--fg);
-    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 14.5px/1.6 var(--mono);
     display: flex; flex-direction: column;
   }
   header {
-    display: flex; align-items: baseline; gap: 12px;
-    padding: 12px 16px; border-bottom: 1px solid var(--line);
+    padding: 8px 16px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px;
+    display: flex; gap: 10px; align-items: center;
   }
-  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-  header .meta { color: var(--muted); font-size: 13px; }
-  #log { flex: 1; overflow-y: auto; padding: 16px; }
-  .wrap { max-width: 760px; margin: 0 auto; }
-  .msg { margin: 10px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .user { display: flex; justify-content: flex-end; }
-  .user > div {
-    background: var(--me); color: var(--me-fg);
-    padding: 8px 12px; border-radius: 14px 14px 4px 14px; max-width: 85%;
-  }
-  .agent > div { padding: 2px 0; }
-  .agent code { font: 13px var(--mono); background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
-  .agent pre.code {
-    font: 13px/1.5 var(--mono); background: var(--card); border: 1px solid var(--line);
-    border-radius: 8px; padding: 10px 12px; margin: 6px 0; overflow-x: auto; white-space: pre;
-  }
-  .thinking { color: var(--muted); font-size: 13px; font-style: italic; }
-  .tool { font: 12.5px/1.5 var(--mono); color: var(--muted); margin: 4px 0; }
-  .tool .call { color: var(--accent); }
-  .tool details { margin: 2px 0 0 14px; }
-  .tool summary { cursor: pointer; }
-  .tool pre {
-    margin: 4px 0; padding: 8px 10px; background: var(--card); border: 1px solid var(--line);
-    border-radius: 8px; overflow-x: auto; white-space: pre-wrap; max-height: 320px; overflow-y: auto;
-  }
+  header b { color: var(--bright); font-weight: 600; }
+  #log { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+  .wrap { max-width: 940px; margin: 0 auto; }
+
+  /* Every row is a gutter mark and a body, like a terminal transcript. */
+  .row { display: grid; grid-template-columns: 2.2ch 1fr; margin: 6px 0; }
+  .row > .pfx { color: var(--muted); user-select: none; }
+  .row > .body { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+  .user { margin-top: 18px; }
+  .user > .body { color: var(--bright); }
+  .user > .pfx { color: var(--accent); }
+  .thinking > .body { color: var(--muted); font-style: italic; font-size: 13.5px; }
+  .note > .body { color: var(--muted); }
+  .notice > .pfx, .notice > .body { color: var(--warn); }
+  .tool { margin: 4px 0; }
+  .tool > .pfx, .ui-row > .pfx { color: var(--accent); }
+  .tool .call { color: var(--muted); }
+  .tool .call b { color: var(--fg); font-weight: 600; }
+  .tool details { margin-top: 1px; }
+  .tool summary { cursor: pointer; color: var(--muted); list-style: none; }
+  .tool summary::-webkit-details-marker { display: none; }
+  .tool summary::before { content: "⎿ "; }
   .tool .err { color: var(--warn); }
-  .note { color: var(--muted); font-size: 13px; border-left: 2px solid var(--line); padding-left: 10px; }
-  .notice { color: var(--warn); font-size: 13px; text-align: center; margin: 8px 0; }
+  pre.out, pre.code {
+    margin: 4px 0; padding: 8px 10px; background: var(--card); border-left: 2px solid var(--line);
+    overflow-x: auto; white-space: pre; font: 13px/1.5 var(--mono);
+  }
+  pre.out { max-height: 340px; overflow-y: auto; white-space: pre-wrap; }
+  .agent code { background: var(--card); padding: 0 3px; }
+  .agent strong { color: var(--bright); }
   .older { display: block; margin: 0 auto 8px; }
-  form {
-    border-top: 1px solid var(--line); padding: 12px 16px;
-    display: flex; gap: 8px; max-width: 792px; width: 100%; margin: 0 auto; align-items: flex-end;
+
+  /* ui blocks */
+  .ui { margin: 2px 0 10px; }
+  .ui + .ui { margin-top: 14px; }
+  .ui .title { color: var(--bright); margin-bottom: 6px; white-space: normal; }
+  .ui .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ui button.opt { text-align: left; }
+  .ui button.opt .k { color: var(--muted); margin-right: 8px; }
+  .ui button.opt.on { border-color: var(--accent); color: var(--bright); background: var(--hi); }
+  .ui.done button, .ui.done input, .ui.done select, .ui.done textarea { pointer-events: none; }
+  .ui.done { opacity: .7; }
+  .ui form.fields { display: grid; grid-template-columns: max-content minmax(0, 420px); gap: 6px 12px; align-items: center; white-space: normal; }
+  .ui form.fields label { color: var(--muted); }
+  .ui form.fields .actions { grid-column: 2; }
+  .ui input, .ui select, .ui textarea {
+    font: inherit; color: var(--fg); background: var(--card); border: 1px solid var(--line);
+    padding: 4px 8px; width: 100%; border-radius: 3px;
   }
-  textarea {
-    flex: 1; resize: none; font: inherit; color: inherit; background: var(--card);
-    border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; max-height: 200px;
-    outline: none;
-  }
-  textarea:focus { border-color: var(--muted); }
+  .ui input[type=checkbox] { width: auto; justify-self: start; }
+  .ui textarea { min-height: 70px; resize: vertical; }
+  .ui table { border-collapse: collapse; font-size: 13.5px; white-space: normal; }
+  .ui th, .ui td { padding: 3px 18px 3px 0; text-align: left; vertical-align: top; }
+  .ui th { color: var(--bright); font-weight: 600; border-bottom: 1px solid var(--line); }
+  .ui td.num, .ui th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .ui .scroll { overflow-x: auto; }
+  .ui svg.draw { display: block; width: 100%; height: auto; }
+  .ui svg.draw text { font-family: var(--mono); }
+  .ui .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+  .ui .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: -1px; }
+  .ui img.pic { display: block; max-width: 100%; height: auto; background: var(--card); border: 1px solid var(--line); }
+
   button {
-    font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--card); color: var(--fg);
-    border-radius: 10px; padding: 8px 14px; cursor: pointer;
+    font: inherit; font-size: 13.5px; color: var(--fg); background: var(--card);
+    border: 1px solid var(--line); border-radius: 3px; padding: 3px 10px; cursor: pointer;
   }
-  button.primary { background: var(--me); color: var(--me-fg); border-color: var(--line); }
+  button:hover { border-color: var(--muted); }
   button[hidden] { display: none; }
-  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
+
+  form#composer {
+    border-top: 1px solid var(--line); padding: 10px 16px;
+    display: grid; grid-template-columns: 2.2ch 1fr auto; align-items: start; gap: 0 8px;
+    max-width: 972px; width: 100%; margin: 0 auto;
+  }
+  form#composer .pfx { color: var(--accent); line-height: 1.6; padding-top: 1px; }
+  #input {
+    font: inherit; color: var(--bright); background: transparent; border: 0; outline: none;
+    resize: none; padding: 1px 0; max-height: 220px; line-height: 1.6;
+  }
+  #input::placeholder { color: var(--muted); }
+  .btns { display: flex; gap: 6px; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
   .dot.busy { background: var(--accent); animation: pulse 1s infinite alternate; }
   @keyframes pulse { to { opacity: .3; } }
-  #gate { margin: 20vh auto; max-width: 420px; padding: 0 16px; color: var(--muted); text-align: center; }
+  #gate { margin: 20vh auto; max-width: 460px; padding: 0 16px; color: var(--muted); text-align: center; }
 </style>
 </head>
 <body>
-<header>
-  <h1 id="name">Orb</h1>
-  <span class="meta"><span id="dot" class="dot"></span><span id="status">connecting…</span></span>
-</header>
+<header><span id="dot" class="dot"></span><b id="name">orb</b><span id="status">connecting…</span></header>
 <main id="log"><div class="wrap" id="items"></div></main>
-<form id="form">
-  <textarea id="input" rows="1" placeholder="Message" autofocus></textarea>
-  <button type="button" id="stop" hidden>Stop</button>
-  <button type="submit" class="primary">Send</button>
+<form id="composer">
+  <span class="pfx">›</span>
+  <textarea id="input" rows="1" placeholder="message · Enter to send · Shift+Enter for a new line" autofocus></textarea>
+  <span class="btns"><button type="button" id="stop" hidden>stop</button><button type="submit">send</button></span>
 </form>
 <script>
 (() => {
   const token = location.hash.slice(1);
   const $ = (id) => document.getElementById(id);
   const log = $("log"), items = $("items"), input = $("input");
-  let agent = "orb", busy = false, oldest = null, live = null;
+  const SVGNS = "http://www.w3.org/2000/svg";
+  let live = null, oldest = null;
+  const active = []; // ui blocks still waiting for an answer
 
   if (!token) {
     document.body.innerHTML = '<p id="gate">Open the link that <code>orb web</code> printed in your terminal. It ends with a #token.</p>';
@@ -111,8 +147,15 @@
     if (text !== undefined) e.textContent = text;
     return e;
   };
+  const svgEl = (tag, attrs, text) => {
+    const e = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  };
   const nearBottom = () => log.scrollHeight - log.scrollTop - log.clientHeight < 80;
   const scroll = (force) => { if (force) log.scrollTop = log.scrollHeight; };
+  const say = (text) => api("/api/send", { text });
 
   // A little Markdown, safely: everything is escaped first, and only these
   // tags are added back. No links, no raw HTML.
@@ -136,57 +179,455 @@
       return inline(part);
     }).join("");
   }
-  function setText(body, kind, text) {
-    body.dataset.raw = text;
-    if (kind === "agent") body.innerHTML = markdown(text);
-    else body.textContent = text;
+
+  // A transcript row: a gutter mark and a body.
+  function row(cls, mark, text, md) {
+    const r = el("div", "row " + cls);
+    r.append(el("span", "pfx", mark));
+    const body = el("div", "body");
+    if (text !== undefined) {
+      body.dataset.raw = text;
+      if (md) body.innerHTML = markdown(text);
+      else body.textContent = text;
+    }
+    r.append(body);
+    return r;
   }
 
-  function bubble(kind, text) {
-    const row = el("div", "msg " + (kind === "user" ? "user" : kind === "note" ? "note" : "agent"));
-    const body = el("div");
-    setText(body, kind === "user" || kind === "note" ? kind : "agent", text);
-    row.append(body);
-    return [row, body];
-  }
-
-  function toolCall(name, input) {
-    const box = el("div", "tool");
-    let summary = input;
+  function toolRow(name, inputJson) {
+    let arg = inputJson;
     try {
-      const o = JSON.parse(input);
-      summary = o.command ?? o.path ?? (o.id !== undefined ? o.id + (o.n !== undefined ? "+" + o.n : "") : input);
+      const o = JSON.parse(inputJson);
+      arg = o.command ?? o.path ?? (o.id !== undefined ? o.id + (o.n !== undefined ? "+" + o.n : "") : inputJson);
     } catch {}
-    summary = String(summary).replace(/\s+/g, " ");
-    if (summary.length > 120) summary = summary.slice(0, 119) + "…";
-    box.append(el("div", "call", "● " + name + "(" + summary + ")"));
+    arg = String(arg).replace(/\s+/g, " ");
+    if (arg.length > 140) arg = arg.slice(0, 139) + "…";
+    const r = row("tool", "●");
+    const call = el("div", "call");
+    call.append(el("b", "", name), document.createTextNode("(" + arg + ")"));
+    r.lastChild.append(call);
+    return r;
+  }
+
+  function toolResult(r, result, isError) {
+    const d = el("details");
+    const lines = result.replace(/\n$/, "").split("\n").length;
+    d.append(el("summary", isError ? "err" : "", (isError ? "error" : "output") + " · " + lines + " line" + (lines === 1 ? "" : "s")));
+    d.append(el("pre", "out", result));
+    if (!r) { r = row("tool", " "); items.append(r); }
+    r.lastChild.append(d);
+  }
+
+  // ---------- ui blocks ----------
+
+  function deactivateAll() {
+    for (const b of active.splice(0)) b.classList.add("done");
+  }
+
+  // A user message: an answer closes the question it answers (and shows the
+  // answer on it, e.g. after a reload); anything else closes every open one.
+  function onUserMessage(text) {
+    const k = active.map((b) => text.startsWith(b.key)).lastIndexOf(true);
+    if (k < 0) return deactivateAll();
+    const [b] = active.splice(k, 1);
+    b.answered(text.slice(b.key.length));
+  }
+
+  function choicesBlock(b) {
+    const box = el("div", "ui");
+    box.append(el("div", "title", "? " + b.question + (b.multiple ? "  (pick any)" : "")));
+    const opts = el("div", "opts");
+    const picked = new Set();
+    const buttons = [];
+    b.options.forEach((o, k) => {
+      const btn = el("button", "opt");
+      btn.type = "button";
+      btn.append(el("span", "k", String(k + 1)), document.createTextNode(o));
+      btn.onclick = () => {
+        if (box.classList.contains("done")) return;
+        if (b.multiple) {
+          picked.has(o) ? picked.delete(o) : picked.add(o);
+          btn.classList.toggle("on");
+          return;
+        }
+        btn.classList.add("on");
+        box.classList.add("done");
+        say("Answer to \"" + b.question + "\": " + o);
+      };
+      buttons.push(btn);
+      opts.append(btn);
+    });
+    if (b.multiple) {
+      const send = el("button", "", "send ⏎");
+      send.type = "button";
+      send.onclick = () => {
+        if (box.classList.contains("done")) return;
+        box.classList.add("done");
+        say("Answer to \"" + b.question + "\": " + (picked.size ? [...picked].join(", ") : "none of these"));
+      };
+      opts.append(send);
+    }
+    box.append(opts);
+    box.pick = (k) => buttons[k] && buttons[k].click();
+    box.single = !b.multiple;
+    box.key = "Answer to \"" + b.question + "\": ";
+    box.answered = (rest) => {
+      const chosen = new Set(b.multiple ? rest.split(", ") : [rest]);
+      buttons.forEach((btn, i) => btn.classList.toggle("on", chosen.has(b.options[i])));
+      box.classList.add("done");
+    };
     return box;
   }
 
-  function toolResult(box, result, isError) {
-    const d = el("details");
-    const lines = result.split("\n").length;
-    d.append(el("summary", isError ? "err" : "", (isError ? "error" : "output") + " · " + lines + " line" + (lines === 1 ? "" : "s")));
-    d.append(el("pre", "", result));
-    (box ?? items).append(d);
+  function formBlock(b) {
+    const box = el("div", "ui");
+    box.append(el("div", "title", "▤ " + b.title));
+    const form = el("form", "fields");
+    const getters = [], setters = new Map();
+    for (const f of b.fields) {
+      const id = "f" + Math.random().toString(36).slice(2);
+      const label = el("label", "", f.label || f.name);
+      label.htmlFor = id;
+      let ctl;
+      if (f.input === "long") ctl = el("textarea");
+      else if (f.input === "select") {
+        ctl = el("select");
+        for (const o of f.options || []) ctl.append(el("option", "", o));
+      } else {
+        ctl = el("input");
+        ctl.type = f.input === "number" ? "number" : f.input === "date" ? "date" : f.input === "checkbox" ? "checkbox" : "text";
+      }
+      ctl.id = id;
+      if (f.placeholder && "placeholder" in ctl) ctl.placeholder = f.placeholder;
+      if (f.value !== undefined) {
+        if (ctl.type === "checkbox") ctl.checked = !!f.value;
+        else ctl.value = String(f.value);
+      }
+      getters.push(() => [f.label || f.name, ctl.type === "checkbox" ? (ctl.checked ? "yes" : "no") : ctl.value.trim() || "(empty)"]);
+      setters.set(f.label || f.name, (v) => { if (ctl.type === "checkbox") ctl.checked = v === "yes"; else if (v !== "(empty)") ctl.value = v; });
+      form.append(label, ctl);
+    }
+    const actions = el("div", "actions");
+    const submit = el("button", "", b.submit || "submit");
+    submit.type = "submit";
+    actions.append(submit);
+    form.append(actions);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      if (box.classList.contains("done")) return;
+      box.classList.add("done");
+      say("Form \"" + b.title + "\":\n" + getters.map((g) => { const [k, v] = g(); return "- " + k + ": " + v; }).join("\n"));
+    };
+    box.append(form);
+    box.key = "Form \"" + b.title + "\":\n";
+    box.answered = (rest) => {
+      for (const line of rest.split("\n")) {
+        const m = /^- (.*?): (.*)$/.exec(line);
+        if (m && setters.has(m[1])) setters.get(m[1])(m[2]);
+      }
+      box.classList.add("done");
+    };
+    return box;
   }
 
-  // A logged message, from history.
-  let lastTool = null;
-  function renderLogged(m, into, before) {
-    const add = (node) => before ? into.insertBefore(node, before) : into.append(node);
+  function tableBlock(b) {
+    const box = el("div", "ui");
+    if (b.title) box.append(el("div", "title", b.title));
+    const wrap = el("div", "scroll");
+    const t = el("table");
+    const numeric = b.columns.map((_, c) => b.rows.length > 0 && b.rows.every((r) => typeof r[c] === "number"));
+    const hr = el("tr");
+    b.columns.forEach((c, k) => hr.append(el("th", numeric[k] ? "num" : "", c)));
+    t.append(hr);
+    for (const r of b.rows) {
+      const tr = el("tr");
+      r.forEach((cell, k) => tr.append(el("td", numeric[k] ? "num" : "", String(cell))));
+      t.append(tr);
+    }
+    wrap.append(t);
+    box.append(wrap);
+    return box;
+  }
+
+  const COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)"];
+
+  function niceTicks(lo, hi, n) {
+    if (lo === hi) hi = lo + 1;
+    const raw = (hi - lo) / n;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+    const start = Math.floor(lo / step) * step, end = Math.ceil(hi / step) * step;
+    const ticks = [];
+    for (let v = start; v <= end + step / 2; v += step) ticks.push(+v.toFixed(10));
+    return ticks;
+  }
+  const fmt = (v) => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, "") + "M"
+    : Math.abs(v) >= 1e4 ? (v / 1e3).toFixed(1).replace(/\.0$/, "") + "k" : String(+v.toFixed(2));
+
+  function chartBlock(b) {
+    const box = el("div", "ui");
+    box.append(el("div", "title", "▥ " + (b.title || (b.kind + " chart"))));
+    if (b.series.length > 1) {
+      const lg = el("div", "legend");
+      b.series.forEach((s, k) => {
+        const it = el("span"), sw = el("i");
+        sw.style.background = COLORS[k % 5];
+        it.append(sw, document.createTextNode(s.name));
+        lg.append(it);
+      });
+      box.append(lg);
+    }
+    const W = 680, H = 250, L = 52, R = 12, T = 10, B = 34;
+    const all = b.series.flatMap((s) => s.values);
+    const ticks = niceTicks(Math.min(0, ...all), Math.max(0, ...all), 4);
+    const lo = ticks[0], hi = ticks[ticks.length - 1];
+    const y = (v) => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+    const band = (W - L - R) / b.labels.length;
+    const svg = svgEl("svg", { class: "draw", viewBox: `0 0 ${W} ${H}`, role: "img" });
+    svg.style.maxWidth = W + "px";
+    for (const t of ticks) {
+      svg.append(svgEl("line", { x1: L, x2: W - R, y1: y(t), y2: y(t), stroke: "var(--line)", "stroke-width": 1 }));
+      svg.append(svgEl("text", { x: L - 8, y: y(t) + 4, "text-anchor": "end", "font-size": 11.5, fill: "var(--muted)" }, fmt(t)));
+    }
+    const every = Math.ceil(b.labels.length / Math.max(1, Math.floor((W - L - R) / 64)));
+    b.labels.forEach((lab, i) => {
+      if (i % every) return;
+      const text = lab.length > 10 ? lab.slice(0, 9) + "…" : lab;
+      svg.append(svgEl("text", { x: L + band * (i + 0.5), y: H - B + 18, "text-anchor": "middle", "font-size": 11.5, fill: "var(--muted)" }, text));
+    });
+    if (b.kind === "bar") {
+      const n = b.series.length, gw = band * 0.72, bw = gw / n;
+      b.series.forEach((s, k) => s.values.forEach((v, i) => {
+        const x = L + band * i + (band - gw) / 2 + bw * k;
+        const top = y(Math.max(v, 0)), bot = y(Math.min(v, 0));
+        const r = svgEl("rect", { x: x + 1, y: top, width: Math.max(bw - 2, 1), height: Math.max(bot - top, 1), fill: COLORS[k % 5], rx: 1 });
+        r.append(svgEl("title", {}, `${s.name} · ${b.labels[i]}: ${v}`));
+        svg.append(r);
+      }));
+    } else {
+      b.series.forEach((s, k) => {
+        const pts = s.values.map((v, i) => [L + band * (i + 0.5), y(v)]);
+        svg.append(svgEl("polyline", { points: pts.map((p) => p.join(",")).join(" "), fill: "none", stroke: COLORS[k % 5], "stroke-width": 2, "stroke-linejoin": "round" }));
+        pts.forEach(([px, py], i) => {
+          const c = svgEl("circle", { cx: px, cy: py, r: 3, fill: COLORS[k % 5] });
+          c.append(svgEl("title", {}, `${s.name} · ${b.labels[i]}: ${s.values[i]}`));
+          svg.append(c);
+        });
+      });
+    }
+    svg.append(svgEl("line", { x1: L, x2: W - R, y1: y(0), y2: y(0), stroke: "var(--muted)", "stroke-width": 1 }));
+    box.append(svg);
+    return box;
+  }
+
+  // Boxes and arrows. Loops are broken by walking the arrows from the start
+  // nodes (an arrow back to a node still on the walk is a back edge); layers
+  // are longest paths over the rest; one barycenter pass cuts crossings.
+  function diagramBlock(b) {
+    const box = el("div", "ui");
+    if (b.title) box.append(el("div", "title", "◇ " + b.title));
+    const right = b.direction === "right";
+    const labeled = b.edges.some((e) => e.label);
+    const CH = 7.4, LH = 16, PADX = 12, PADY = 9, MAXC = 24, GAPN = right ? 22 : 28;
+    const GAPL = right ? (labeled ? 110 : 70) : (labeled ? 76 : 48);
+    const nodes = new Map(b.nodes.map((n, k) => {
+      const words = String(n.label || n.id).split(/\s+/), lines = [""];
+      for (const w of words) {
+        const cur = lines[lines.length - 1];
+        if (cur && (cur + " " + w).length > MAXC) lines.push(w); else lines[lines.length - 1] = cur ? cur + " " + w : w;
+      }
+      const wpx = Math.max(64, Math.max(...lines.map((l) => l.length)) * CH + PADX * 2);
+      return [n.id, { id: n.id, k, lines, w: wpx, h: lines.length * LH + PADY * 2, layer: 0, preds: [], succs: [] }];
+    }));
+    for (const e of b.edges) { nodes.get(e.from).succs.push(e); nodes.get(e.to).preds.push(e.from); }
+    const back = new Set(), state = new Map();
+    const walk = (id) => {
+      state.set(id, 1);
+      for (const e of nodes.get(id).succs) {
+        const st = state.get(e.to);
+        if (st === 1) back.add(e);
+        else if (st === undefined) walk(e.to);
+      }
+      state.set(id, 2);
+    };
+    const order = [...nodes.values()].sort((a, c) => (a.preds.length > 0) - (c.preds.length > 0) || a.k - c.k);
+    for (const n of order) if (!state.has(n.id)) walk(n.id);
+    // Longest path over the forward edges, in topological order.
+    const indeg = new Map([...nodes.keys()].map((id) => [id, 0]));
+    for (const e of b.edges) if (!back.has(e)) indeg.set(e.to, indeg.get(e.to) + 1);
+    const queue = order.filter((n) => indeg.get(n.id) === 0);
+    while (queue.length) {
+      const n = queue.shift();
+      for (const e of n.succs) {
+        if (back.has(e)) continue;
+        const t = nodes.get(e.to);
+        t.layer = Math.max(t.layer, n.layer + 1);
+        indeg.set(t.id, indeg.get(t.id) - 1);
+        if (indeg.get(t.id) === 0) queue.push(t);
+      }
+    }
+    const layers = [];
+    for (const n of nodes.values()) (layers[n.layer] ||= []).push(n);
+    for (let l = 1; l < layers.length; l++) {
+      const pos = new Map(layers[l - 1].map((n, i) => [n.id, i]));
+      const bary = (n) => { const ps = n.preds.filter((p) => pos.has(p)); return ps.length ? ps.reduce((a, p) => a + pos.get(p), 0) / ps.length : Infinity; };
+      layers[l].sort((a, c) => (bary(a) - bary(c)) || (a.k - c.k));
+    }
+    // Place: along each layer, then center the layers.
+    const along = (n) => right ? n.h : n.w, across = (n) => right ? n.w : n.h;
+    const sizes = layers.map((ns) => ns.reduce((a, n) => a + along(n), 0) + GAPN * (ns.length - 1));
+    const span = Math.max(...sizes);
+    let depth = 0;
+    layers.forEach((ns, l) => {
+      const thick = Math.max(...ns.map(across));
+      let at = (span - sizes[l]) / 2;
+      for (const n of ns) {
+        const a = at + along(n) / 2, d = depth + thick / 2;
+        n.cx = right ? d : a; n.cy = right ? a : d;
+        at += along(n) + GAPN;
+      }
+      depth += thick + GAPL;
+    });
+    const id = "a" + Math.random().toString(36).slice(2);
+    const svg = svgEl("svg", { class: "draw", role: "img" });
+    const defs = svgEl("defs");
+    const mk = svgEl("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" });
+    mk.append(svgEl("path", { d: "M0,0 L10,5 L0,10 z", fill: "var(--muted)" }));
+    defs.append(mk);
+    svg.append(defs);
+    const edgeG = svgEl("g"), nodeG = svgEl("g"), labelG = svgEl("g");
+    const bez = (p0, p1, p2, p3, u) => [0, 1].map((i) => {
+      const v = 1 - u;
+      return v * v * v * p0[i] + 3 * v * v * u * p1[i] + 3 * v * u * u * p2[i] + u * u * u * p3[i];
+    });
+    // The drawing's bounds, grown by everything placed.
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const grow = (x, y) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); };
+    for (const n of nodes.values()) { grow(n.cx - n.w / 2, n.cy - n.h / 2); grow(n.cx + n.w / 2, n.cy + n.h / 2); }
+    for (const e of b.edges) {
+      const s = nodes.get(e.from), t = nodes.get(e.to);
+      let d, mx, my;
+      if (!back.has(e) && t.layer > s.layer) {
+        if (right) {
+          const x1 = s.cx + s.w / 2, x2 = t.cx - t.w / 2, xm = (x1 + x2) / 2;
+          d = `M${x1},${s.cy} C${xm},${s.cy} ${xm},${t.cy} ${x2},${t.cy}`;
+          [mx, my] = bez([x1, s.cy], [xm, s.cy], [xm, t.cy], [x2, t.cy], 0.55);
+        } else {
+          const y1 = s.cy + s.h / 2, y2 = t.cy - t.h / 2, ym = (y1 + y2) / 2;
+          d = `M${s.cx},${y1} C${s.cx},${ym} ${t.cx},${ym} ${t.cx},${y2}`;
+          [mx, my] = bez([s.cx, y1], [s.cx, ym], [t.cx, ym], [t.cx, y2], 0.62);
+        }
+      } else if (s === t) {
+        // A node pointing at itself: a small loop on its far side.
+        const r = 16;
+        if (right) {
+          const y = s.cy - s.h / 2;
+          d = `M${s.cx - 10},${y} C${s.cx - 10},${y - r * 2} ${s.cx + 10},${y - r * 2} ${s.cx + 10},${y}`; mx = s.cx; my = y - r * 2 - 2;
+        } else {
+          const x = s.cx + s.w / 2;
+          d = `M${x},${s.cy - 8} C${x + r * 2},${s.cy - 8} ${x + r * 2},${s.cy + 8} ${x},${s.cy + 8}`; mx = x + r * 2 + 4; my = s.cy;
+        }
+        grow(mx + 10, my - 10);
+      } else {
+        // An arrow back up the layers: a curve beside its forward partner,
+        // shifted off center so the two don't sit on top of each other.
+        // Attach at the outer part of both boxes, toward the partner's side,
+        // well clear of the forward arrows at the centers.
+        const off = Math.max(16, (right ? Math.min(s.h, t.h) : Math.min(s.w, t.w)) / 2 - 12);
+        if (right) {
+          const dy = s.cy >= t.cy ? -off : off;
+          const xs = s.cx - s.w / 2, xt = t.cx + t.w / 2, ys = s.cy + dy, yt = t.cy + dy, xm = (xs + xt) / 2;
+          d = `M${xs},${ys} C${xm},${ys} ${xm},${yt} ${xt},${yt}`; mx = xm; my = (ys + yt) / 2 + 12;
+        } else {
+          const dx = s.cx <= t.cx ? -off : off;
+          const ys = s.cy - s.h / 2, yt = t.cy + t.h / 2, xs = s.cx + dx, xt = t.cx + dx, ym = (ys + yt) / 2;
+          d = `M${xs},${ys} C${xs},${ym} ${xt},${ym} ${xt},${yt}`;
+          [mx, my] = bez([xs, ys], [xs, ym], [xt, ym], [xt, yt], 0.5);
+          if (e.label) mx += (dx < 0 ? -1 : 1) * (e.label.length * 3.4 + 8);
+        }
+      }
+      edgeG.append(svgEl("path", { d, fill: "none", stroke: "var(--muted)", "stroke-width": 1.4, "marker-end": `url(#${id})` }));
+      if (e.label) {
+        const w = e.label.length * 6.8 + 8;
+        grow(mx - w / 2, my - 9); grow(mx + w / 2, my + 8);
+        labelG.append(svgEl("rect", { x: mx - w / 2, y: my - 9, width: w, height: 17, fill: "var(--bg)" }));
+        labelG.append(svgEl("text", { x: mx, y: my + 4, "text-anchor": "middle", "font-size": 11.5, fill: "var(--muted)" }, e.label));
+      }
+    }
+    for (const n of nodes.values()) {
+      nodeG.append(svgEl("rect", { x: n.cx - n.w / 2, y: n.cy - n.h / 2, width: n.w, height: n.h, rx: 4, fill: "var(--card)", stroke: "var(--accent)", "stroke-width": 1.2 }));
+      n.lines.forEach((line, i) => nodeG.append(svgEl("text", {
+        x: n.cx, y: n.cy - n.h / 2 + PADY + LH * i + 12, "text-anchor": "middle", "font-size": 12.5, fill: "var(--fg)",
+      }, line)));
+    }
+    svg.append(edgeG, nodeG, labelG);
+    const W = x1 - x0 + 8, H = y1 - y0 + 8;
+    svg.setAttribute("viewBox", `${x0 - 4} ${y0 - 4} ${W} ${H}`);
+    svg.style.maxWidth = W + "px";
+    const wrap = el("div", "scroll");
+    wrap.append(svg);
+    box.append(wrap);
+    return box;
+  }
+
+  // A picture the agent drew, shown as an image: scripts in it never run,
+  // and it can't load anything.
+  function svgBlock(b) {
+    const box = el("div", "ui");
+    if (b.title) box.append(el("div", "title", "▣ " + b.title));
+    let src = b.svg.trim();
+    if (!/<svg[^>]*\sxmlns=/i.test(src)) src = src.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+    const img = el("img", "pic");
+    img.alt = b.title || "picture";
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(src);
+    box.append(img);
+    return box;
+  }
+
+  const BUILD = { choices: choicesBlock, form: formBlock, table: tableBlock, chart: chartBlock, diagram: diagramBlock, svg: svgBlock };
+
+  // A ui call as a transcript row holding its blocks; null if it can't be read.
+  function uiRow(inputJson) {
+    let blocks;
+    try { blocks = JSON.parse(inputJson).blocks; } catch { return null; }
+    if (!Array.isArray(blocks)) return null;
+    const r = row("ui-row", "◆");
+    for (const b of blocks) {
+      const make = BUILD[b && b.type];
+      if (!make) continue;
+      try {
+        const node = make(b);
+        r.lastChild.append(node);
+        if (b.type === "choices" || b.type === "form") active.push(node);
+      } catch {
+        r.lastChild.append(el("div", "", "(couldn't draw this " + b.type + ")"));
+      }
+    }
+    return r;
+  }
+
+  // ---------- the transcript ----------
+
+  let lastTool = null; // in history: the tool row an echo belongs to
+  function renderLogged(m, into) {
     if (m.kind === "tool") {
       const sp = m.text.indexOf(" ");
-      lastTool = toolCall(m.text.slice(0, sp < 0 ? undefined : sp), sp < 0 ? "" : m.text.slice(sp + 1));
-      add(lastTool);
+      const name = m.text.slice(0, sp < 0 ? undefined : sp), arg = sp < 0 ? "" : m.text.slice(sp + 1);
+      const r = name === "ui" ? uiRow(arg) : null;
+      lastTool = { name, ui: !!r, row: r || toolRow(name, arg) };
+      into.append(lastTool.row);
     } else if (m.kind === "echo") {
       const isError = m.text.startsWith("error:");
-      if (lastTool && lastTool.isConnected) toolResult(lastTool, m.text, isError);
-      else { const box = el("div", "tool"); toolResult(box, m.text, isError); add(box); }
+      if (!(lastTool && lastTool.ui && !isError)) {
+        if (lastTool) toolResult(lastTool.row, m.text, isError);
+        else { const r = row("tool", " "); into.append(r); toolResult(r, m.text, isError); }
+      }
       lastTool = null;
     } else {
       lastTool = null;
-      add(bubble(m.kind === agent ? "agent" : m.kind, m.text)[0]);
+      if (m.kind === "user") { onUserMessage(m.text); into.append(row("user", "›", m.text)); }
+      else if (m.kind === "note") into.append(row("note", "#", m.text));
+      else into.append(row("agent", " ", m.text, true));
     }
   }
 
@@ -194,32 +635,34 @@
     const res = await api("/api/history?limit=200" + (oldest === null ? "" : "&before=" + oldest));
     const msgs = res.messages;
     if (!msgs.length) return;
-    const first = items.firstChild;
+    const firstLoad = oldest === null;
     const height = log.scrollHeight;
     const frag = document.createDocumentFragment();
+    const before = active.length;
     lastTool = null;
     for (const m of msgs) renderLogged(m, frag);
+    // Anything older messages asked was asked before later messages.
+    if (!firstLoad) for (const b of active.splice(before)) b.classList.add("done");
     items.querySelector(".older")?.remove();
     items.insertBefore(frag, items.firstChild);
     oldest = msgs[0].i;
     if (oldest > 0) {
-      const more = el("button", "older", "Load earlier messages");
+      const more = el("button", "older", "load earlier messages");
       more.type = "button";
       more.onclick = loadOlder;
       items.prepend(more);
     }
-    if (first) log.scrollTop = log.scrollHeight - height;
-    else scroll(true);
+    if (firstLoad) scroll(true);
+    else log.scrollTop = log.scrollHeight - height;
   }
 
   function setBusy(b) {
-    busy = b;
     $("dot").className = "dot" + (b ? " busy" : "");
     $("stop").hidden = !b;
   }
   async function refreshStatus() {
     const s = await api("/api/state");
-    $("status").textContent = s.messages + " messages · view " + Math.round(s.viewBytes / 1024) + " KB";
+    $("status").textContent = "· " + s.messages + " messages · view " + Math.round(s.viewBytes / 1024) + " KB";
     setBusy(s.busy);
   }
 
@@ -227,12 +670,13 @@
   function liveAppend(kind, delta) {
     const stick = nearBottom();
     if (!live || live.kind !== kind) {
-      const [row, body] = kind === "thinking" ? (() => { const r = el("div", "msg thinking"); return [r, r]; })() : bubble("agent", "");
-      items.append(row);
-      live = { kind, body };
+      const r = kind === "thinking" ? row("thinking", "∴", "") : row("agent", " ", "", true);
+      items.append(r);
+      live = { kind, body: r.lastChild };
     }
-    if (kind === "text") setText(live.body, "agent", (live.body.dataset.raw || "") + delta);
-    else live.body.textContent += delta;
+    live.body.dataset.raw = (live.body.dataset.raw || "") + delta;
+    if (kind === "text") live.body.innerHTML = markdown(live.body.dataset.raw);
+    else live.body.textContent = live.body.dataset.raw;
     scroll(stick);
   }
 
@@ -240,31 +684,33 @@
     const stick = nearBottom();
     switch (e.type) {
       case "hello":
-        agent = e.agent;
-        $("name").textContent = e.name;
+        $("name").textContent = e.agent;
         document.title = e.name;
         setBusy(e.busy);
         break;
       case "user":
-        items.append(bubble("user", e.text)[0]);
+        onUserMessage(e.text);
+        items.append(row("user", "›", e.text));
         live = null;
         scroll(true);
         break;
       case "start": setBusy(true); live = null; break;
       case "thinking": liveAppend("thinking", e.d); break;
       case "text": liveAppend("text", e.d); break;
-      case "tool":
-        live = { kind: "tool", box: toolCall(e.name, e.input) };
-        items.append(live.box);
-        scroll(stick);
+      case "tool": {
+        const r = e.name === "ui" ? uiRow(e.input) : null;
+        live = { kind: "tool", ui: !!r, row: r || toolRow(e.name, e.input) };
+        items.append(live.row);
+        scroll(stick || !!r);
         break;
+      }
       case "result":
-        toolResult(live && live.box, e.result, e.isError);
+        if (!(live && live.ui && !e.isError)) toolResult(live && live.row, e.result, e.isError);
         live = null;
         scroll(stick);
         break;
       case "notice":
-        items.append(el("div", "notice", e.message));
+        items.append(row("notice", "!", e.message));
         live = null;
         scroll(stick);
         break;
@@ -278,7 +724,7 @@
   function connect() {
     const es = new EventSource("/api/events?t=" + encodeURIComponent(token));
     es.onmessage = (m) => onEvent(JSON.parse(m.data));
-    es.onerror = () => { $("status").textContent = "reconnecting…"; };
+    es.onerror = () => { $("status").textContent = "· reconnecting…"; };
     es.onopen = () => refreshStatus();
   }
 
@@ -287,23 +733,33 @@
     if (!text) return;
     input.value = "";
     autosize();
-    api("/api/send", { text });
+    say(text);
   }
-
   function autosize() {
     input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 200) + "px";
+    input.style.height = Math.min(input.scrollHeight, 220) + "px";
   }
 
-  $("form").onsubmit = (e) => { e.preventDefault(); send(); };
+  $("composer").onsubmit = (e) => { e.preventDefault(); send(); };
   $("stop").onclick = () => api("/api/stop", {});
   input.addEventListener("input", autosize);
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
   });
+  // With the message box empty, 1-9 pick an option of the latest open question.
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || !/^[1-9]$/.test(e.key)) return;
+    const t = document.activeElement;
+    if (t && t !== input && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    if (input.value) return;
+    const q = [...active].reverse().find((b) => b.single && !b.classList.contains("done"));
+    if (!q) return;
+    e.preventDefault();
+    q.pick(Number(e.key) - 1);
+  });
 
   loadOlder().then(connect).catch(() => {
-    $("status").textContent = "can't reach orb: is `orb web` running, and is the link right?";
+    $("status").textContent = "· can't reach orb: is `orb web` running, and is the link right?";
   });
 })();
 </script>

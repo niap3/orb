@@ -29,15 +29,17 @@ export class Turns {
   private readonly chat: Chat;
   private readonly out: Output;
   private readonly cwd: string;
+  private readonly iface: "browser" | "terminal";
   private inbox: string[] = [];
   private running = false;
   private abort: AbortController | null = null;
   private idle: Promise<void> = Promise.resolve();
 
-  constructor(chat: Chat, out: Output, cwd = process.cwd()) {
+  constructor(chat: Chat, out: Output, cwd = process.cwd(), iface: "browser" | "terminal" = "terminal") {
     this.chat = chat;
     this.out = out;
     this.cwd = cwd;
+    this.iface = iface;
   }
 
   get busy(): boolean {
@@ -74,7 +76,7 @@ export class Turns {
 
   /** Per-turn state goes after the view, never in the system prompt. */
   private header(): string {
-    return `[${new Date().toString()}; working directory: ${this.cwd}]\n\n`;
+    return `[${new Date().toString()}; working directory: ${this.cwd}; interface: ${this.iface}]\n\n`;
   }
 
   private async turn(m: string): Promise<void> {

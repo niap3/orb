@@ -106,7 +106,7 @@ test("the tree and both views stay in shape over many messages", async () => {
   // view only ever holds built lines.
   const c = model.calls[model.calls.length - 1];
   assert.equal((c.system as { text: string }[])[0].text, chat.system);
-  assert.ok(c.tools && c.tools.length === 6);
+  assert.ok(c.tools && c.tools.length === 7);
   for (const call of model.calls) {
     const content = call.messages[0].content as { text: string }[];
     assert.ok(content[0].text.startsWith("<chat>\n"));
@@ -241,7 +241,7 @@ test("a turn: view, then the message; tool calls and results are logged", async 
   const content = turnCalls[0].messages[0].content as { text: string; cache_control?: unknown }[];
   // The view excludes the new message, which goes whole after it.
   assert.equal(content.at(-2)!.text, "<chat>\n0+1|user: remember: the deploy key is in ~/keys/deploy\n1+1|orb: noted\n</chat>");
-  assert.match(content.at(-1)!.text, /^\[.*; working directory: \/work\]\n\nwhere is the deploy key\?$/);
+  assert.match(content.at(-1)!.text, /^\[.*; working directory: \/work; interface: terminal\]\n\nwhere is the deploy key\?$/);
   assert.equal(turnCalls[0].thinking?.type, "adaptive");
   assert.deepEqual(turnCalls[1].messages.length, 3);
   assert.deepEqual(out.events, ["call zoom", "result zoom", "end"]);

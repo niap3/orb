@@ -55,6 +55,25 @@ The server listens on your own machine only (127.0.0.1). Every request needs
 the token, and requests with another host name are refused, so other
 websites you visit can't drive Orb. Don't share the link.
 
+### Choices, forms, charts and diagrams
+
+When a click is quicker than typing, or a picture says more than a
+paragraph, Orb shows blocks in the chat with its `ui` tool:
+
+- **choices**: buttons for a question. Click one, or press its number when
+  the message box is empty.
+- **form**: fields to fill in (text, long text, number, date, a list to pick
+  from, a checkbox).
+- **table**, **chart** (bar or line) and **diagram** (boxes and arrows, laid
+  out automatically).
+- **svg**: a picture Orb draws. It's shown as an image, so nothing in it can
+  run or load anything.
+
+Your answer to choices or a form goes back as your next message, like
+`Answer to "Which database?": Postgres`. In the terminal (`orb`), the blocks
+show as plain text and you type the answer. Orb is told which interface
+you're on.
+
 ### In the terminal
 
 In the chat, type `/stats`, `/view`, `/zoom id n` or `/quit`. Ctrl-C stops a
@@ -97,7 +116,8 @@ src/store.ts     main/ and tree/ JSONL logs, view.json, the lock
 src/chat.ts      the chat: logging, tree building, both views, the compactor
 src/prompt.ts    the system prompt and the compaction task templates
 src/model.ts     API calls, the cache-write gate, view cache blocks
-src/tools.ts     zoom, date, shell, read, write, edit
+src/tools.ts     zoom, date, shell, read, write, edit, ui
+src/ui.ts        the ui tool's blocks: checks, and plain text for a terminal
 src/turn.ts      the turn loop
 src/cli.ts       the terminal interface
 src/web.ts       orb web: the local server

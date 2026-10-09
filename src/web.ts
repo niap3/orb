@@ -53,7 +53,9 @@ class Broadcast implements Output {
     this.send({ type: "text", d });
   }
   toolCall(name: string, input: unknown): void {
-    this.send({ type: "tool", name, input: clip(JSON.stringify(input), SHOW) });
+    // ui blocks go whole: the page draws them.
+    const json = JSON.stringify(input);
+    this.send({ type: "tool", name, input: name === "ui" ? json : clip(json, SHOW) });
   }
   toolResult(name: string, result: string, isError: boolean): void {
     this.send({ type: "result", name, result: clip(result, SHOW), isError });
@@ -102,7 +104,7 @@ export function serve(opts: WebOptions): Promise<WebServer> {
   const host = opts.host ?? "127.0.0.1";
   const token = opts.token ?? randomBytes(16).toString("hex");
   const out = new Broadcast();
-  const turns = new Turns(chat, out, opts.cwd);
+  const turns = new Turns(chat, out, opts.cwd, "browser");
   const agent = chat.cfg.name.toLowerCase();
   let port = 0;
 
@@ -118,7 +120,7 @@ export function serve(opts: WebOptions): Promise<WebServer> {
       i: m.i,
       kind: m.kind,
       date: m.date,
-      text: m.kind === "tool" || m.kind === "echo" ? clip(m.text, SHOW) : m.text,
+      text: (m.kind === "tool" && !m.text.startsWith("ui ")) || m.kind === "echo" ? clip(m.text, SHOW) : m.text,
     }));
   };
 
@@ -134,7 +136,7 @@ export function serve(opts: WebOptions): Promise<WebServer> {
         res.writeHead(200, {
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",
-          "content-security-policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'",
+          "content-security-policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:",
           "referrer-policy": "no-referrer",
         });
         return res.end(PAGE);
