@@ -5,22 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Orb</title>
 <style>
+  /* One neutral theme: a mid-dark warm gray, never pure black or white.
+     Body text is about 9:1 against the background (legible without glare);
+     secondary text stays above 4.5:1 everywhere. */
   :root {
-    --bg: #fafaf9; --fg: #1c1917; --muted: #78716c; --line: #e7e5e4;
-    --me: #1c1917; --me-fg: #fafaf9; --card: #ffffff; --accent: #2563eb; --warn: #b45309;
+    color-scheme: dark;
+    --bg: #2b2d30; --fg: #d4d2cc; --muted: #a09e97; --line: #45484d;
+    --card: #33363a; --me: #41454b; --me-fg: #e2e0da; --accent: #8fb0d3; --warn: #d8b36e;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #1c1917; --fg: #f5f5f4; --muted: #a8a29e; --line: #292524;
-      --me: #f5f5f4; --me-fg: #1c1917; --card: #24201e; --accent: #60a5fa; --warn: #fbbf24;
-    }
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
     background: var(--bg); color: var(--fg);
-    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
     display: flex; flex-direction: column;
   }
   header {
@@ -70,7 +68,7 @@
     font: inherit; font-size: 14px; border: 1px solid var(--line); background: var(--card); color: var(--fg);
     border-radius: 10px; padding: 8px 14px; cursor: pointer;
   }
-  button.primary { background: var(--me); color: var(--me-fg); border-color: var(--me); }
+  button.primary { background: var(--me); color: var(--me-fg); border-color: var(--line); }
   button[hidden] { display: none; }
   .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); margin-right: 6px; }
   .dot.busy { background: var(--accent); animation: pulse 1s infinite alternate; }

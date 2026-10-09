@@ -74,6 +74,16 @@ prompt.
 | `ORB_COMPACT_EFFORT` | `xhigh` | effort for compactions |
 | `ORB_FALLBACKS` | on | set to `off` to disable server-side refusal fallbacks on turns |
 
+**Billing.** Orb calls the Claude API, so it needs an API key from the
+[Claude Console](https://platform.claude.com/), billed per token. A Claude
+Pro or Max subscription can't be used: Anthropic allows subscription logins
+only in Claude Code and its own apps, not in other programs (see
+[Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance)).
+Summaries run on Haiku 5.5, which costs little, and most of each turn's
+input is read from the prompt cache at a fraction of the normal price. To
+spend less on replies, set `ORB_MODEL=claude-sonnet-5-5` or lower
+`ORB_EFFORT`. A console spend limit is a good safety net.
+
 **Orb's tools run with your permissions.** `shell`, `read`, `write` and
 `edit` act on your computer in the directory you started Orb from, and they
 have no sandbox and no confirmation prompts. Run it somewhere you trust it.
