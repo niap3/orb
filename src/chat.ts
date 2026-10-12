@@ -9,6 +9,7 @@ import type {
   BetaTextBlockParam,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { Config } from "./config.ts";
+import { ClaudeCode } from "./claudecode.ts";
 import { CacheGate, type ModelClient, type StreamHandlers, prefixKey, viewBlocks } from "./model.ts";
 import { leafTask, mergeTask, systemPrompt, tooLong } from "./prompt.ts";
 import { type Kind, type Message, Store } from "./store.ts";
@@ -20,6 +21,7 @@ import { View, renderLine } from "./view.ts";
 export interface ChatOptions {
   dir: string;
   cfg: Config;
+  /** The API client; unused with the claude-code backend. */
   client: ModelClient;
   /** Background trouble (a failed compaction): it is retried, so only reported. */
   warn?(message: string): void;
@@ -39,6 +41,8 @@ export class Chat {
   private readonly gate: CacheGate;
   private readonly nodes = new Map<string, string>();
   private readonly compactor: Compactor;
+  /** The Claude Code engine, with the claude-code backend. */
+  readonly cc: ClaudeCode | null;
   readonly warn: (message: string) => void;
 
   constructor(opts: ChatOptions) {
@@ -52,6 +56,7 @@ export class Chat {
       if (r.i * 2 ** r.l < this.messages.length) this.nodes.set(key([r.l, r.i]), r.text);
     }
     this.system = systemPrompt(this.cfg, this.store.readInstructions());
+    this.cc = this.cfg.backend === "claude-code" ? new ClaudeCode(this.cfg, this.store.dir, this.system, this, this.cfg.claudeBin) : null;
     this.view = this.loadView("view.json", null);
     this.cview = this.loadView("cview.json", this.view);
     this.compactor = new Compactor(this);
@@ -272,6 +277,7 @@ export class Chat {
   }
 
   close(): void {
+    void this.cc?.close();
     this.store.close();
   }
 }
@@ -452,6 +458,7 @@ class Compactor {
    * and another try, at most `sizeTries` in all, keeping the shortest.
    */
   private async summarize(context: Node[], task: string): Promise<string> {
+    if (this.chat.cc) return this.summarizeCC(context, task);
     const { chat } = this;
     const { cfg } = chat;
     const blocks = chat.blocks(context);
@@ -482,6 +489,35 @@ class Compactor {
     }
     if (best === undefined) throw new Error("the model gave no line");
     return best;
+  }
+
+  /** The same, through Claude Code: one run, the follow-ups in it. */
+  private async summarizeCC(context: Node[], task: string): Promise<string> {
+    const { chat } = this;
+    const { cfg } = chat;
+    const content = [...chat.blocks(context).map((b) => ({ type: "text" as const, text: b.text })), { type: "text" as const, text: task }];
+    let best: string | undefined;
+    let tries = 0;
+    let done: string | undefined;
+    this.calls++;
+    await chat.cc!.compact(
+      content,
+      (reply) => {
+        tries++;
+        const line = reply.trim().replace(/^\d+\+\d+\|\s*/, "");
+        if (line && (best === undefined || bytes(line) < bytes(best))) best = line;
+        if (line && bytes(line) <= cfg.lineMax) {
+          done = line;
+          return null;
+        }
+        if (tries >= cfg.sizeTries) return null;
+        return line ? tooLong(cfg, bytes(line), headBytes(line, cfg.lineMax)) : "Output only the line.";
+      },
+      chat.store.dir,
+    );
+    const line = done ?? best;
+    if (line === undefined) throw new Error("the model gave no line");
+    return line;
   }
 
   stats() {

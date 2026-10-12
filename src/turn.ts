@@ -8,6 +8,7 @@ import type {
   BetaToolUseBlock,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type { Chat } from "./chat.ts";
+import { type ClaudeSession, resultText, toolName } from "./claudecode.ts";
 import { clip } from "./text.ts";
 import { ToolError, runTool } from "./tools.ts";
 
@@ -33,6 +34,9 @@ export class Turns {
   private inbox: string[] = [];
   private running = false;
   private abort: AbortController | null = null;
+  /** A running Claude Code turn, and how many user messages it has been sent. */
+  private live: ClaudeSession | null = null;
+  private liveSent = 0;
   private idle: Promise<void> = Promise.resolve();
 
   constructor(chat: Chat, out: Output, cwd = process.cwd(), iface: "browser" | "terminal" = "terminal") {
@@ -48,6 +52,14 @@ export class Turns {
 
   /** A user message: starts a turn, or reaches the running one between tool calls. */
   send(text: string): Promise<void> {
+    if (this.live) {
+      // Claude Code takes it between tool calls itself.
+      this.chat.log("user", text);
+      this.out.delivered(text);
+      this.live.send(this.header() + text);
+      this.liveSent++;
+      return this.idle;
+    }
     this.inbox.push(text);
     if (!this.running) this.idle = this.drain();
     return this.idle;
@@ -56,6 +68,7 @@ export class Turns {
   /** Stop the running turn. Messages already logged stay logged. */
   interrupt(): void {
     this.abort?.abort();
+    this.live?.interrupt();
   }
 
   /** Resolves once no turn is running. */
@@ -80,6 +93,7 @@ export class Turns {
   }
 
   private async turn(m: string): Promise<void> {
+    if (this.chat.cc) return this.ccTurn(m);
     const { chat, out } = this;
     const abort = (this.abort = new AbortController());
     out.start();
@@ -158,6 +172,91 @@ export class Turns {
       if (abort.signal.aborted) out.notice("interrupted");
       else out.notice(`turn failed: ${(e as Error).message}`);
     } finally {
+      this.abort = null;
+      out.end();
+    }
+  }
+
+  /**
+   * A turn through Claude Code: the same view and message, in a fresh
+   * `claude -p` run. Its events are logged as they come, like the API's.
+   */
+  private async ccTurn(m: string): Promise<void> {
+    const { chat, out } = this;
+    const cc = chat.cc!;
+    const agent = chat.cfg.name.toLowerCase();
+    const abort = (this.abort = new AbortController());
+    out.start();
+    let s: ClaudeSession | null = null;
+    try {
+      if (!(await chat.waitSummarized(chat.cfg.turnWaitMs))) {
+        out.notice("some messages are not summarized yet; going on without them (they show as placeholders)");
+      }
+      const blocks = chat.blocks(chat.view.lines).map((b) => ({ type: "text" as const, text: b.text }));
+      chat.log("user", m);
+      if (abort.signal.aborted) throw abort.signal.reason;
+      s = cc.session(await cc.turnArgs(this.cwd), this.cwd);
+      this.live = s;
+      this.liveSent = 1;
+      s.send([...blocks, { type: "text", text: this.header() + m }]);
+      let acked = 0;
+      const names = new Map<string, string>();
+      for await (const e of s.events()) {
+        if (e.parent_tool_use_id) continue; // a subagent's inner steps
+        switch (e.type) {
+          case "stream_event": {
+            const ev = e.event;
+            if (ev?.type !== "content_block_delta") break;
+            if (ev.delta?.type === "text_delta") out.text(ev.delta.text);
+            else if (ev.delta?.type === "thinking_delta") out.thinking(ev.delta.thinking);
+            break;
+          }
+          case "assistant":
+            // Log each reply and tool call as it happens. Thoughts are shown, never logged.
+            for (const b of e.message?.content ?? []) {
+              if (b.type === "text" && b.text.trim()) chat.log(agent, b.text);
+              if (b.type === "tool_use") {
+                const name = toolName(b.name);
+                names.set(b.id, name);
+                chat.log("tool", `${name} ${JSON.stringify(b.input)}`);
+                out.toolCall(name, b.input);
+              }
+            }
+            break;
+          case "user": {
+            const content = e.message?.content;
+            const results = Array.isArray(content) ? content.filter((b: { type: string }) => b.type === "tool_result") : [];
+            if (results.length === 0) {
+              acked++; // one of our messages, read by Claude Code
+              break;
+            }
+            for (const r of results) {
+              const text = clip(resultText(r.content), chat.cfg.toolClip);
+              chat.log("echo", text);
+              out.toolResult(names.get(r.tool_use_id) ?? "tool", text, !!r.is_error);
+            }
+            break;
+          }
+          case "result":
+            if (e.is_error && !abort.signal.aborted) out.notice(`claude: ${e.result || e.subtype}`);
+            // Done once it has read every message sent; a message that came
+            // after it finished starts another answer in the same run.
+            if (acked === 0 || acked >= this.liveSent) s.end();
+            break;
+          case "system":
+            if (e.subtype === "api_retry") out.notice(`retrying (${e.error}, attempt ${e.attempt})`);
+            break;
+        }
+      }
+      const { code, stderr } = await s.exit();
+      if (abort.signal.aborted) out.notice("interrupted");
+      else if (code !== 0) out.notice(`claude exited with ${code}${stderr ? `: ${stderr.split("\n").slice(-3).join(" ")}` : ""}`);
+    } catch (e) {
+      if (abort.signal.aborted) out.notice("interrupted");
+      else out.notice(`turn failed: ${(e as Error).message}`);
+    } finally {
+      s?.end();
+      this.live = null;
       this.abort = null;
       out.end();
     }

@@ -6,12 +6,13 @@
 //   orb stats            sizes of the log, the tree and the views
 //   orb view             print the view, as the model sees it
 
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import { Chat } from "./chat.ts";
-import { fromEnv } from "./config.ts";
+import { type Config, fromEnv } from "./config.ts";
 import { AnthropicClient } from "./model.ts";
 import { type Output, Turns } from "./turn.ts";
 import { type Block, uiText } from "./ui.ts";
@@ -36,18 +37,62 @@ The chat lives in $ORB_DIR (default ~/.orb). Put your instructions (who you
 are, how your files are organized, how you want work done) in
 $ORB_DIR/instructions.md.
 
-Environment: ANTHROPIC_API_KEY, ORB_DIR, ORB_MODEL, ORB_EFFORT,
-ORB_COMPACT_MODEL, ORB_COMPACT_EFFORT, ORB_FALLBACKS=off.
+Orb runs on your Claude subscription through Claude Code (install it and run
+\`claude auth login\` once), or on the Claude API if ANTHROPIC_API_KEY is set.
+Pick one explicitly with ORB_BACKEND=claude-code or ORB_BACKEND=api.
+
+Environment: ANTHROPIC_API_KEY, ORB_BACKEND, ORB_CLAUDE (path to claude),
+ORB_DIR, ORB_MODEL, ORB_EFFORT, ORB_COMPACT_MODEL, ORB_COMPACT_EFFORT,
+ORB_FALLBACKS=off.
 
 In the chat: /stats, /view, /zoom id n, /quit. Ctrl-C stops a running turn.
 Messages you send while a turn runs reach it between tool calls.`;
 
+/**
+ * With the claude-code backend: check that Claude Code is installed and
+ * signed in, and say which account pays. Throws with what to do if not.
+ */
+function checkClaudeCode(cfg: Config): string {
+  const r = spawnSync(cfg.claudeBin, ["auth", "status"], { encoding: "utf8" });
+  if (r.error) {
+    throw new Error(
+      `Orb uses Claude Code to reach your Claude account, but "${cfg.claudeBin}" wasn't found.\n` +
+        "Install Claude Code (https://code.claude.com/docs/en/setup), run `claude auth login`, and start Orb again.\n" +
+        "Or set ANTHROPIC_API_KEY to use the API instead.",
+    );
+  }
+  let status: { loggedIn?: boolean; authMethod?: string } = {};
+  try {
+    status = JSON.parse(r.stdout);
+  } catch {
+    // An older Claude Code: go by the exit code.
+  }
+  if (r.status !== 0 || status.loggedIn === false) {
+    throw new Error("Claude Code isn't signed in. Run `claude auth login`, then start Orb again.");
+  }
+  switch (status.authMethod) {
+    case "claude.ai":
+    case "oauth_token":
+      return "Claude Code, on your Claude subscription";
+    case "api_key":
+    case "api_key_helper":
+      return "Claude Code, on an API key (billed per use, not your subscription)";
+    default:
+      return "Claude Code";
+  }
+}
+
+let via = "";
+
 function open(): Chat {
   const dir = process.env.ORB_DIR ?? path.join(os.homedir(), ".orb");
+  const cfg = fromEnv();
+  via = cfg.backend === "claude-code" ? checkClaudeCode(cfg) : "the Claude API";
   return new Chat({
     dir,
-    cfg: fromEnv(),
-    client: new AnthropicClient(),
+    cfg,
+    // The claude-code backend never calls the API itself.
+    client: cfg.backend === "api" ? new AnthropicClient() : { stream: () => Promise.reject(new Error("no API client")) },
     warn: (m) => process.stderr.write(yellow(`[orb] ${m}`) + "\n"),
   });
 }
@@ -57,8 +102,8 @@ function summarize(input: unknown): string {
   const s =
     typeof o.command === "string"
       ? o.command
-      : typeof o.path === "string"
-        ? o.path
+      : typeof o.path === "string" || typeof o.file_path === "string"
+        ? String(o.path ?? o.file_path)
         : "id" in o
           ? `${o.id}${"n" in o ? `+${o.n}` : ""}`
           : JSON.stringify(o);
@@ -140,7 +185,7 @@ async function repl(): Promise<void> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout, prompt: "› " });
   const turns = new Turns(chat, new TerminalOutput(rl));
   const s = chat.stats();
-  console.log(dim(`orb: ${s.messages} messages in ${chat.store.dir}. /quit to leave.`));
+  console.log(dim(`orb: ${s.messages} messages in ${chat.store.dir}, via ${via}. /quit to leave.`));
   rl.prompt();
 
   let lastSigint = 0;
@@ -188,7 +233,7 @@ async function web(portArg: string | undefined): Promise<void> {
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`bad port: ${portArg}`);
   const chat = open();
   const server = await serve({ chat, port });
-  console.log(`orb is running. Open this link (it holds your access token):\n\n  ${server.url}\n`);
+  console.log(`orb is running, via ${via}. Open this link (it holds your access token):\n\n  ${server.url}\n`);
   console.log(dim("Ctrl-C to stop."));
   const stop = async () => {
     await server.close();

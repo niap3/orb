@@ -198,7 +198,7 @@
     let arg = inputJson;
     try {
       const o = JSON.parse(inputJson);
-      arg = o.command ?? o.path ?? (o.id !== undefined ? o.id + (o.n !== undefined ? "+" + o.n : "") : inputJson);
+      arg = o.command ?? o.path ?? o.file_path ?? (o.id !== undefined ? o.id + (o.n !== undefined ? "+" + o.n : "") : inputJson);
     } catch {}
     arg = String(arg).replace(/\s+/g, " ");
     if (arg.length > 140) arg = arg.slice(0, 139) + "…";

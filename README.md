@@ -20,14 +20,20 @@ token is read from the prompt cache.
 
 ## Use
 
-You need Node 22.18 or later (it runs the TypeScript directly) and an
-Anthropic API key.
+You need Node 22.18 or later (it runs the TypeScript directly), and one of:
+
+- **Your Claude subscription (Pro or Max), through Claude Code.** Install
+  [Claude Code](https://code.claude.com/docs/en/setup) and run
+  `claude auth login` once. This is the default when no API key is set.
+- **An Anthropic API key**, billed per use: `export ANTHROPIC_API_KEY=...`
 
 ```sh
 npm install
-export ANTHROPIC_API_KEY=...
-node src/cli.ts            # or: npm link, then: orb
+node src/cli.ts web        # or: npm link, then: orb web
 ```
+
+Orb says at startup which one it's using. Pick one explicitly with
+`ORB_BACKEND=claude-code` or `ORB_BACKEND=api`.
 
 ```
 orb                  chat in the terminal
@@ -91,17 +97,47 @@ prompt.
 | `ORB_EFFORT` | `high` | effort for turns |
 | `ORB_COMPACT_MODEL` | `claude-haiku-5-5` | model for compactions |
 | `ORB_COMPACT_EFFORT` | `xhigh` | effort for compactions |
-| `ORB_FALLBACKS` | on | set to `off` to disable server-side refusal fallbacks on turns |
+| `ORB_FALLBACKS` | on | set to `off` to disable server-side refusal fallbacks on turns (API only) |
+| `ORB_BACKEND` | `claude-code` without an API key, else `api` | where calls go |
+| `ORB_CLAUDE` | `claude` | the Claude Code program, for the `claude-code` backend |
 
-**Billing.** Orb calls the Claude API, so it needs an API key from the
-[Claude Console](https://platform.claude.com/), billed per token. A Claude
-Pro or Max subscription can't be used: Anthropic allows subscription logins
-only in Claude Code and its own apps, not in other programs (see
+### Your subscription, through Claude Code
+
+Anthropic lets a Claude subscription sign in only to its own programs, such
+as Claude Code, never directly to other apps (see
 [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance)).
-Summaries run on Haiku 5.5, which costs little, and most of each turn's
-input is read from the prompt cache at a fraction of the normal price. To
-spend less on replies, set `ORB_MODEL=claude-sonnet-5-5` or lower
-`ORB_EFFORT`. A console spend limit is a good safety net.
+So with the `claude-code` backend, Orb never touches your login: it runs
+the official `claude` program on your computer in its scripting mode
+(`claude -p`), and Claude Code signs in and talks to Claude as usual. Orb
+is a front end on your own machine, for your own use.
+
+What changes from the API backend:
+
+- Orb still keeps the memory: its log, its tree, its view and its system
+  prompt (passed with `--system-prompt-file`). Each turn and each summary
+  is a fresh `claude -p` run; Claude Code saves no sessions of its own
+  (`--no-session-persistence`).
+- The shell and file work is done by Claude Code's own tools (Bash, Read,
+  Write, Edit). Orb's zoom, date and ui tools reach Claude Code through a
+  small MCP server inside Orb, on localhost under a random path.
+- Tool calls run without asking (`--permission-mode dontAsk` with exactly
+  these tools allowed). Anything else Claude Code would ask about is
+  denied.
+- Claude Code handles prompt caching itself, so Orb's own cache layout
+  doesn't apply. Claude Code also still reads your `~/.claude` settings
+  and CLAUDE.md files, as it does in any other use.
+- Usage counts toward your plan's limits. Summaries run on Haiku and are
+  short, but there are about two per message, each a separate run. At most
+  3 run at once with this backend.
+
+### API billing
+
+With an API key, Orb calls the Claude API directly, billed per token from
+the [Claude Console](https://platform.claude.com/). Summaries run on Haiku
+5.5, which costs little, and most of each turn's input is read from the
+prompt cache at a fraction of the normal price. To spend less on replies,
+set `ORB_MODEL=claude-sonnet-5-5` or lower `ORB_EFFORT`. A console spend
+limit is a good safety net.
 
 **Orb's tools run with your permissions.** `shell`, `read`, `write` and
 `edit` act on your computer in the directory you started Orb from, and they
@@ -119,6 +155,8 @@ src/model.ts     API calls, the cache-write gate, view cache blocks
 src/tools.ts     zoom, date, shell, read, write, edit, ui
 src/ui.ts        the ui tool's blocks: checks, and plain text for a terminal
 src/turn.ts      the turn loop
+src/claudecode.ts the claude-code backend: runs `claude -p`
+src/mcp.ts       a small MCP server, for Orb's own tools under Claude Code
 src/cli.ts       the terminal interface
 src/web.ts       orb web: the local server
 src/web.html     orb web: the page
