@@ -1,0 +1,25 @@
+{
+  "name": "orb",
+  "version": "0.1.0",
+  "description": "One chat that never ends: an AI agent whose memory is its own chat log, compressed into a tree of summaries.",
+  "type": "module",
+  "bin": {
+    "orb": "bin/orb.js"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/cli.ts",
+    "test": "node --test \"test/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  }
+}
